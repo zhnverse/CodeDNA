@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  githubId        String    @unique
+  username        String    @unique
+  avatar          String?
+  bio             String?
+  email           String?
+  developerScore  Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  repositories    Repository[]
+  skillNodes      SkillNode[]
+  genomeSnapshots GenomeSnapshot[]
+  codePatterns    CodePattern[]
+  growthEvents    GrowthEvent[]
+}
+
+model Repository {
+  id              String    @id @default(cuid())
+  userId          String
+  githubRepoId    String    @unique
+  name            String
+  fullName        String
+  url             String
+  description     String?
+  primaryLanguage String?
+  languages       Json?
+  stars           Int       @default(0)
+  forks           Int       @default(0)
+  size            Int       @default(0)
+  isPrivate       Boolean   @default(false)
+  isAnalyzed      Boolean   @default(false)
+  lastAnalyzedAt  DateTime?
+  analysisData    Json?
+  complexityScore Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codePatterns CodePattern[]
+}
+
+enum SkillCategory {
+  LANGUAGE
+  FRAMEWORK
+  PATTERN
+  TOOL
+  CONCEPT
+}
+
+enum SkillConfidence {
+  CLAIMED
+  DEMONSTRATED
+  MASTERED
+}
+
+model SkillNode {
+  id               String          @id @default(cuid())
+  userId           String
+  name             String
+  category         SkillCategory
+  proficiencyScore Int             @default(0)
+  confidence       SkillConfidence @default(CLAIMED)
+  evidence         Json
+  firstSeen        DateTime
+  lastSeen         DateTime
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  growthEvents GrowthEvent[]
+
+  @@unique([userId, name])
+}
+
+model GenomeSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  genomeData  Json
+  totalSkills Int
+  topCategory String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum PatternType {
+  ARCHITECTURE
+  ERROR_HANDLING
+  TESTING
+  API_DESIGN
+  STATE_MANAGEMENT
+  NAMING_CONVENTION
+}
+
+model CodePattern {
+  id          String      @id @default(cuid())
+  userId      String
+  repoId      String
+  patternType PatternType
+  description String
+  frequency   Int         @default(1)
+  qualityScore Int?
+  createdAt   DateTime    @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+}
+
+enum GrowthEventType {
+  NEW_SKILL
+  LEVEL_UP
+  MILESTONE
+  NEW_REPO
+}
+
+model GrowthEvent {
+  id          String          @id @default(cuid())
+  userId      String
+  skillNodeId String?
+  eventType   GrowthEventType
+  title       String
+  description String?
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillNode SkillNode? @relation(fields: [skillNodeId], references: [id], onDelete: SetNull)
+}
